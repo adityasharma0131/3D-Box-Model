@@ -11,6 +11,12 @@
         padding: 0;
       }
 
+      .prevent-select {
+        -webkit-user-select: none; /* Safari */
+        -ms-user-select: none; /* IE 10 and IE 11 */
+        user-select: none; /* Standard syntax */
+      }
+
       body {
         height: 100vh;
         background: radial-gradient(circle, #1e0037, #0d001a);
@@ -73,7 +79,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="prevent-select">
     <div class="scene">
       <div class="cube" id="cube">
         <div class="face front"></div>
@@ -94,7 +100,6 @@
         cube.style.transform = `rotateX(-20deg) rotateY(${angleY}deg)`;
       }
 
-      // Use pointer events (covering mouse, touch, pen)
       document.body.addEventListener("pointerdown", rotateCube);
     </script>
   </body>
