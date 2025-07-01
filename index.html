@@ -9,12 +9,13 @@
         box-sizing: border-box;
         margin: 0;
         padding: 0;
+        -webkit-tap-highlight-color: transparent;
       }
 
       .prevent-select {
-        -webkit-user-select: none; /* Safari */
-        -ms-user-select: none; /* IE 10 and IE 11 */
-        user-select: none; /* Standard syntax */
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
       }
 
       body {
@@ -26,6 +27,10 @@
         font-family: sans-serif;
         overflow: hidden;
         cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        position: relative;
       }
 
       .scene {
@@ -34,6 +39,7 @@
         width: var(--cube-size);
         height: var(--cube-size);
         perspective: 1000px;
+        z-index: 1;
       }
 
       .cube {
@@ -42,7 +48,8 @@
         position: relative;
         transform-style: preserve-3d;
         transform: rotateX(-20deg) rotateY(0deg);
-        transition: transform 0.8s ease-in-out;
+        transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+        will-change: transform;
       }
 
       .face {
@@ -57,6 +64,7 @@
         border: 1px solid rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(10px);
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        backface-visibility: hidden;
       }
 
       .front {
@@ -77,6 +85,72 @@
       .bottom {
         transform: rotateX(-90deg) translateZ(var(--half-cube));
       }
+
+      .bottom-ui {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        z-index: 2;
+        pointer-events: none; /* prevents blocking tap events to body */
+      }
+
+      .indicators {
+        display: flex;
+        gap: 10px;
+        pointer-events: auto;
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transition: background 0.3s;
+      }
+
+      .dot.active {
+        background: linear-gradient(45deg, #bb86fc, #ff69b4);
+      }
+
+      .magic-btn {
+        padding: 12px 24px;
+        background: linear-gradient(45deg, #bb86fc, #ff69b4);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+        transition: transform 0.2s ease;
+        pointer-events: auto;
+      }
+
+      .magic-btn:active {
+        transform: scale(0.96);
+      }
+
+      @media (max-height: 500px) {
+        .magic-btn {
+          font-size: 0.9rem;
+          padding: 10px 20px;
+        }
+
+        .dot {
+          width: 10px;
+          height: 10px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .cube {
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body class="prevent-select">
@@ -91,16 +165,65 @@
       </div>
     </div>
 
+    <div class="bottom-ui">
+      <div class="indicators" id="indicators">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <button class="magic-btn">Keep Tapping for the Magic</button>
+    </div>
+
     <script>
       const cube = document.getElementById("cube");
+      const dots = document.querySelectorAll(".dot");
       let angleY = 0;
+      let isAnimating = false;
+      let autoRotateTimeout;
+      const autoRotateDelay = 3000;
 
-      function rotateCube() {
-        angleY += 90;
-        cube.style.transform = `rotateX(-20deg) rotateY(${angleY}deg)`;
+      function updateDots() {
+        const sideIndex = Math.floor((angleY % 360) / 90) % 4;
+        dots.forEach((dot, index) => {
+          dot.classList.toggle("active", index === (sideIndex + 4) % 4);
+        });
       }
 
-      document.body.addEventListener("pointerdown", rotateCube);
+      function rotateCube() {
+        if (isAnimating) return;
+        isAnimating = true;
+        angleY += 90;
+        cube.style.transform = `rotateX(-20deg) rotateY(${angleY}deg)`;
+        updateDots();
+        resetAutoRotateTimer();
+        cube.addEventListener(
+          "transitionend",
+          () => {
+            isAnimating = false;
+          },
+          { once: true }
+        );
+      }
+
+      function autoRotate() {
+        if (!isAnimating) {
+          rotateCube();
+        }
+        resetAutoRotateTimer();
+      }
+
+      function resetAutoRotateTimer() {
+        clearTimeout(autoRotateTimeout);
+        autoRotateTimeout = setTimeout(autoRotate, autoRotateDelay);
+      }
+
+      resetAutoRotateTimer();
+      document.body.addEventListener("pointerdown", rotateCube, {
+        passive: true,
+      });
+      document.body.addEventListener("click", rotateCube, { passive: true });
+      window.addEventListener("load", resetAutoRotateTimer);
     </script>
   </body>
 </html>
